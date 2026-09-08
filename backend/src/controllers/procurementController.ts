@@ -1,8 +1,9 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { asyncHandler } from '../middleware/errorMiddleware';
-import { ok } from '../utils/response';
+import { ok, ApiError } from '../utils/response';
 import { validate, idSchema } from '../utils/validation';
+import { prisma } from '../config/database';
 import {
   createProcurement,
   listProcurements,
@@ -19,6 +20,15 @@ const createSchema = z.object({
 
 export const postProcurement = asyncHandler(async (req: Request, res: Response) => {
   const body = validate(createSchema, req.body);
+
+  if (req.user?.role === 'CENTER_OFFICER') {
+    const token = await prisma.token.findUnique({ where: { id: body.tokenId }, select: { centerId: true } });
+    if (!token) throw ApiError.notFound('Token not found');
+    if (token.centerId !== req.user.centerId) {
+      throw ApiError.forbidden('You can only process tokens at your own centre');
+    }
+  }
+
   return ok(res, await createProcurement(body), 201);
 });
 
@@ -51,5 +61,16 @@ const statusSchema = z.object({
 export const patchProcurementStatus = asyncHandler(async (req: Request, res: Response) => {
   const id = validate(idSchema, req.params.id);
   const { status } = validate(statusSchema, req.body);
+
+  // An officer may only update a procurement that belongs to THEIR centre —
+  // requireRole('CENTER_OFFICER') alone doesn't check which centre.
+  if (req.user?.role === 'CENTER_OFFICER') {
+    const existing = await prisma.procurement.findUnique({ where: { id }, select: { centerId: true } });
+    if (!existing) throw ApiError.notFound('Procurement not found');
+    if (existing.centerId !== req.user.centerId) {
+      throw ApiError.forbidden('You can only update procurements at your own centre');
+    }
+  }
+
   return ok(res, await updateProcurementStatus(id, status));
 });

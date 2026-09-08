@@ -25,7 +25,8 @@
     "test:ai": "tsx prisma/seed.ts && tsx tests/aiChat.test.ts",
     "test:agent-tools": "tsx prisma/seed.ts && tsx tests/agentTools.test.ts",
     "test:auth-config": "tsx tests/authConfigStatus.test.ts",
-    "test:all": "tsx prisma/seed.ts && tsx tests/api.test.ts && tsx prisma/seed.ts && tsx tests/phase4.test.ts && tsx tests/supabase.test.ts && tsx tests/google.test.ts && tsx prisma/seed.ts && tsx tests/stripe.test.ts && tsx prisma/seed.ts && tsx tests/phase5.test.ts && tsx prisma/seed.ts && tsx tests/aiChat.test.ts && tsx prisma/seed.ts && tsx tests/agentTools.test.ts && tsx tests/authConfigStatus.test.ts"
+    "test:centre-isolation": "tsx prisma/seed.ts && tsx tests/centreIsolation.test.ts",
+    "test:all": "tsx prisma/seed.ts && tsx tests/api.test.ts && tsx prisma/seed.ts && tsx tests/phase4.test.ts && tsx tests/supabase.test.ts && tsx tests/google.test.ts && tsx prisma/seed.ts && tsx tests/stripe.test.ts && tsx prisma/seed.ts && tsx tests/phase5.test.ts && tsx prisma/seed.ts && tsx tests/aiChat.test.ts && tsx prisma/seed.ts && tsx tests/agentTools.test.ts && tsx tests/authConfigStatus.test.ts && tsx prisma/seed.ts && tsx tests/centreIsolation.test.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
