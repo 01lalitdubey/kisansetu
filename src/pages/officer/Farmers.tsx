@@ -5,6 +5,7 @@ import { farmers as mockFarmers } from '../../data/farmers';
 import { useAppStore } from '../../store/appStore';
 import { useBackendResource } from '../../services/useBackendResource';
 import { farmerApi } from '../../services/api';
+import { PrototypeNote } from '../../components/common/DemoBadge';
 import type { Farmer } from '../../types';
 
 export default function OfficerFarmers() {
@@ -17,6 +18,7 @@ export default function OfficerFarmers() {
     mockFarmers,
     [authRole],
   );
+  const usingFallback = farmers === mockFarmers;
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -36,6 +38,12 @@ export default function OfficerFarmers() {
       <div>
         <h1 className="text-2xl font-extrabold text-white">{t('officer.farmersTitle')}</h1>
         <p className="mt-0.5 text-sm text-white/60">{farmers.length} registered</p>
+        {usingFallback && (
+          <PrototypeNote className="mt-1">
+            {' '}
+            — showing example farmers; the procurement service is unreachable right now.
+          </PrototypeNote>
+        )}
       </div>
 
       <div className="relative">

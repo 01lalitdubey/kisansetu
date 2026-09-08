@@ -34,6 +34,9 @@ export default function OfficerRecommendations() {
         <h3 className="flex items-center gap-2 text-base font-extrabold text-kisan-900">
           <Lightbulb className="h-5 w-5 text-kisan-500" /> {t('admin.aiInsights')}
         </h3>
+        <p className="mt-1 text-xs font-medium text-amber-700">
+          * Sample insights — not generated from this centre's live data yet.
+        </p>
         <ul className="mt-3 space-y-2.5">
           {aiInsights.map((insight) => (
             <li

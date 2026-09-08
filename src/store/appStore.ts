@@ -34,6 +34,7 @@ import {
   notifyTokenBooked,
 } from '../services/mockNotifications';
 import {
+  DEMO_MODE_ENABLED,
   USE_BACKEND,
   checkHealth,
   isBackendLive,
@@ -216,7 +217,7 @@ export const useAppStore = create<AppState>()(
       notifications: clone(initialNotifications),
       toast: null,
 
-      demoMode: true,
+      demoMode: DEMO_MODE_ENABLED,
       activeRecommendation: null,
 
       backendEnabled: USE_BACKEND,

@@ -17,6 +17,10 @@ export const API_BASE_URL: string =
 export const USE_BACKEND: boolean =
   String(import.meta.env.VITE_USE_BACKEND ?? 'false').toLowerCase() === 'true';
 
+/** Officer "simulate demand / advance queue / reset" controls. Set to "false" for a real beta/production build. */
+export const DEMO_MODE_ENABLED: boolean =
+  String(import.meta.env.VITE_ENABLE_DEMO_MODE ?? 'true').toLowerCase() !== 'false';
+
 const TOKEN_KEY = 'kisansetu_token';
 
 export function getToken(): string | null {

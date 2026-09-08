@@ -49,9 +49,8 @@ export function CentresSection() {
           </div>
 
           <div className={`lp-reveal lp-card flex flex-col p-6 ${shown ? 'is-in' : ''}`} style={{ transitionDelay: '120ms' }}>
-            <p className="text-5xl font-extrabold tracking-tight text-[var(--lp-green-700)]">
-              {prototypeCentres.length}+
-            </p>
+            {/* No fabricated centre count on a public page — see countLabel for the honest "demo network" disclosure. */}
+            <p className="text-3xl font-extrabold tracking-tight text-[var(--lp-green-700)]">Jaipur Network</p>
             <p className="lp-kicker mt-1 text-[var(--lp-ink)]/50">{t('landing.centres.countLabel')}</p>
             <p className="mt-4 text-sm leading-relaxed text-[var(--lp-ink)]/65">{t('landing.centres.description')}</p>
 

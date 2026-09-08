@@ -7,6 +7,7 @@ import { useAppStore } from '../../store/appStore';
 import { useBackendResource } from '../../services/useBackendResource';
 import { farmerApi } from '../../services/api';
 import { toProcurementRecord } from '../../services/adapters';
+import { PrototypeNote } from '../../components/common/DemoBadge';
 import type { ProcurementRecord } from '../../types';
 
 export default function FarmerHistory() {
@@ -22,6 +23,7 @@ export default function FarmerHistory() {
     procurementHistory,
     [farmerId],
   );
+  const usingFallback = records === procurementHistory;
 
   if (loading && records.length === 0) {
     return (
@@ -43,7 +45,15 @@ export default function FarmerHistory() {
 
   return (
     <div className="space-y-5">
-      <h1 className="text-2xl font-extrabold text-kisan-900">{t('history.title')}</h1>
+      <div>
+        <h1 className="text-2xl font-extrabold text-kisan-900">{t('history.title')}</h1>
+        {usingFallback && (
+          <PrototypeNote className="mt-1">
+            {' '}
+            — showing example history; unable to reach the procurement service right now.
+          </PrototypeNote>
+        )}
+      </div>
 
       {/* Mobile: cards */}
       <div className="space-y-3 sm:hidden">

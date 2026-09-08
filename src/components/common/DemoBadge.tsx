@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { FlaskConical } from 'lucide-react';
 import { useT } from '../../i18n';
 
@@ -13,11 +14,18 @@ export function DemoBadge({ className = '' }: { className?: string }) {
   );
 }
 
-export function PrototypeNote({ className = '' }: { className?: string }) {
+export function PrototypeNote({
+  className = '',
+  children,
+}: {
+  className?: string;
+  children?: ReactNode;
+}) {
   const { t } = useT();
   return (
     <p className={`text-xs font-medium text-amber-700 ${className}`}>
       * {t('common.prototypeData')}
+      {children}
     </p>
   );
 }

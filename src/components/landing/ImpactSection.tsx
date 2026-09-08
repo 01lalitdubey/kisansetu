@@ -1,4 +1,3 @@
-import { centers as prototypeCentres } from '../../data/centers';
 import { LANGUAGES, useT } from '../../i18n';
 import { Counter } from './Counter';
 import { useReveal } from './hooks';
@@ -29,9 +28,9 @@ export function ImpactSection() {
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
           <div className={`lp-reveal lp-card p-6 lg:col-span-2 ${shown ? 'is-in' : ''}`}>
-            <p className="text-5xl font-extrabold tracking-tight text-[var(--lp-green-700)]">
-              <Counter to={prototypeCentres.length} />+
-            </p>
+            {/* No fabricated centre count — the real, growing number lives in the
+                database, not this marketing page. */}
+            <p className="text-5xl font-extrabold tracking-tight text-[var(--lp-green-700)]">Jaipur</p>
             <p className="mt-2 text-sm font-bold text-[var(--lp-ink)]/60">{t('landing.impact.centresLabel')}</p>
           </div>
           <div className={`lp-reveal lp-card p-6 lg:col-span-2 ${shown ? 'is-in' : ''}`} style={{ transitionDelay: '80ms' }}>

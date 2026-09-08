@@ -19,7 +19,7 @@
  *   (store.bookSlot)                tokenApi.create()           POST /api/tokens
  *   (store demo actions)            demoApi.*                   /api/demo/*
  */
-export { API_BASE_URL, USE_BACKEND, ApiError, ApiUnavailableError, checkHealth, getToken, setToken } from './apiClient';
+export { API_BASE_URL, USE_BACKEND, DEMO_MODE_ENABLED, ApiError, ApiUnavailableError, checkHealth, getToken, setToken } from './apiClient';
 export { authApi } from './authApi';
 export { farmerApi } from './farmerApi';
 export { centerApi } from './centerApi';

@@ -12,11 +12,16 @@ import { DemoBadge } from '../common/DemoBadge';
 
 export function DemoControls() {
   const { t } = useT();
+  const demoMode = useAppStore((s) => s.demoMode);
   const highDemand = useAppStore((s) => s.simulateHighDemand);
   const queueReduction = useAppStore((s) => s.simulateQueueReduction);
   const scheduleChange = useAppStore((s) => s.simulateScheduleChange);
   const processNext = useAppStore((s) => s.processNextTokenDemo);
   const reset = useAppStore((s) => s.resetDemo);
+
+  // VITE_ENABLE_DEMO_MODE=false hides these simulation controls entirely —
+  // they mutate real queue/procurement data and must not appear in a real launch.
+  if (!demoMode) return null;
 
   const actions = [
     { label: t('officer.demo.highDemand'), icon: TrendingUp, onClick: highDemand, tone: 'warn' },

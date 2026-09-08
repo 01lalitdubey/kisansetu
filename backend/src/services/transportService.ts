@@ -30,8 +30,15 @@ export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: numb
   return round2(Math.max(3, R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))));
 }
 
-/** Deterministic estimated pickup→destination distance when no coords exist. */
-function estimateDistanceKm(centerLat: number, centerLng: number, destination: string): number {
+/**
+ * Estimated pickup→destination distance when the farmer has no stored GPS
+ * coordinates. Only ever resolves against a short list of known, real
+ * Jaipur-district place coordinates — it must NEVER invent a distance (an
+ * invented distance becomes an invented transport charge). If the
+ * destination doesn't match a known place, the caller must ask the farmer
+ * to set a verified location instead of guessing.
+ */
+function estimateDistanceKm(centerLat: number, centerLng: number, destination: string): number | null {
   const known: Record<string, [number, number]> = {
     jaipur: [26.9124, 75.7873],
     bassi: [26.8358, 76.0522],
@@ -43,9 +50,7 @@ function estimateDistanceKm(centerLat: number, centerLng: number, destination: s
   };
   const key = destination.toLowerCase().split(',')[0].trim();
   if (known[key]) return haversineKm(centerLat, centerLng, known[key][0], known[key][1]);
-  let h = 0;
-  for (let i = 0; i < destination.length; i++) h = (h * 31 + destination.charCodeAt(i)) & 0xffff;
-  return round2(6 + (h % 220) / 10);
+  return null;
 }
 
 export interface TransportQuote {
@@ -93,11 +98,13 @@ export async function quoteTransport(params: {
       f.longitude,
     );
   } else {
-    distanceKm = estimateDistanceKm(
-      procurement.center.latitude,
-      procurement.center.longitude,
-      destination,
-    );
+    const estimate = estimateDistanceKm(procurement.center.latitude, procurement.center.longitude, destination);
+    if (estimate == null) {
+      throw ApiError.badRequest(
+        'We need your verified farm location to estimate transport distance and cost. Please update your address with GPS coordinates before requesting transport.',
+      );
+    }
+    distanceKm = estimate;
   }
 
   const transportAmount = round2(vehicle.baseFare + vehicle.perKm * distanceKm);
