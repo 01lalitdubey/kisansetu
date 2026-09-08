@@ -1,0 +1,500 @@
+// KisanSetu AI — database schema
+// PostgreSQL (Supabase-compatible). One database powers all three dashboards.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  FARMER
+  CENTER_OFFICER
+  ADMIN
+}
+
+enum CenterStatus {
+  ACTIVE
+  PAUSED
+  CLOSED
+  OVERLOADED
+}
+
+enum ScheduleStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum TokenStatus {
+  BOOKED
+  WAITING
+  SERVING
+  COMPLETED
+  SKIPPED
+  CANCELLED
+}
+
+enum QueueEntryStatus {
+  WAITING
+  SERVING
+  COMPLETED
+  SKIPPED
+}
+
+enum ProcurementStatus {
+  PENDING
+  QUALITY_CHECK
+  WEIGHMENT
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  REFUNDED
+  DELAYED
+}
+
+enum PaymentKind {
+  PROCUREMENT
+  TRANSPORT
+}
+
+enum NotificationType {
+  SCHEDULE_CHANGE
+  QUEUE_ALERT
+  PROCUREMENT_STARTED
+  TOKEN_UPDATE
+  HIGH_DEMAND
+  PAYMENT_UPDATE
+  TRANSPORT_UPDATE
+}
+
+enum VehicleType {
+  SMALL
+  MEDIUM
+  LARGE
+}
+
+enum TransportStatus {
+  REQUESTED
+  ASSIGNED
+  ON_THE_WAY
+  PICKED_UP
+  DELIVERED
+  CANCELLED
+}
+
+enum RecommendationStatus {
+  PENDING
+  APPLIED
+  DISMISSED
+}
+
+enum PredictionKind {
+  WAIT_TIME
+  SLOT_RECOMMENDATION
+  CENTER_LOAD
+  LOAD_BALANCING
+}
+
+enum CenterApprovalStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  mobile       String   @unique
+  email        String?  @unique
+  // Null for Supabase-authenticated users (identity lives in Supabase Auth).
+  passwordHash String?
+  // Links this application user to a Supabase Auth user (auth.users.id).
+  supabaseId   String?  @unique
+  role         Role
+  language     String   @default("en")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  farmer            Farmer?
+  officer           Officer?
+  admin             Admin?
+  registeredCenters ProcurementCenter[] @relation("centerRegisteredBy")
+
+  @@map("users")
+}
+
+model Farmer {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  village           String
+  location          String
+  preferredLanguage String   @default("en")
+  primaryCropId     String?
+  approxQuantity    Float    @default(0)
+  // Real address (Phase 5) — used for transport distance estimation
+  addressLine       String?
+  city              String?
+  district          String?
+  state             String?
+  pincode           String?
+  latitude          Float?
+  longitude         Float?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  primaryCrop   Crop?         @relation(fields: [primaryCropId], references: [id])
+  tokens        Token[]
+  procurements  Procurement[]
+  payments      Payment[]
+  notifications Notification[]
+  transports    Transport[]
+
+  @@map("farmers")
+}
+
+model Officer {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  centerId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  center ProcurementCenter @relation(fields: [centerId], references: [id])
+
+  @@map("officers")
+}
+
+model Admin {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admins")
+}
+
+// ---------------------------------------------------------------------------
+// Reference data
+// ---------------------------------------------------------------------------
+
+model Crop {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  msp       Float?
+  createdAt DateTime @default(now())
+
+  farmers      Farmer[]
+  schedules    ProcurementSchedule[]
+  tokens       Token[]
+  procurements Procurement[]
+
+  @@map("crops")
+}
+
+model ProcurementCenter {
+  id                    String       @id @default(cuid())
+  name                  String       @unique
+  location              String
+  latitude              Float
+  longitude             Float
+  capacity              Int
+  currentQueue          Int          @default(0)
+  farmersServed         Int          @default(0)
+  activeCounters        Int          @default(3)
+  averageProcessingTime Float        @default(7)
+  status                CenterStatus @default(ACTIVE)
+  mapX                  Float        @default(50)
+  mapY                  Float        @default(50)
+  // Phase 5 — officer-registered centres + admin approval
+  approvalStatus  CenterApprovalStatus @default(APPROVED)
+  isSeed          Boolean              @default(false)
+  contactNumber   String?
+  addressLine     String?
+  city            String?
+  district        String?
+  state           String?              @default("Rajasthan")
+  pincode         String?
+  supportedCrops  String[]             @default([])
+  registeredById  String?
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  registeredBy  User?     @relation("centerRegisteredBy", fields: [registeredById], references: [id])
+  officers      Officer[]
+  schedules     ProcurementSchedule[]
+  tokens        Token[]
+  procurements  Procurement[]
+  queue         Queue?
+  transports    Transport[]
+  recsFrom      CenterRecommendation[] @relation("recFromCenter")
+  recsTo        CenterRecommendation[] @relation("recToCenter")
+
+  @@map("procurement_centers")
+}
+
+// ---------------------------------------------------------------------------
+// Scheduling
+// ---------------------------------------------------------------------------
+
+model ProcurementSchedule {
+  id            String         @id @default(cuid())
+  centerId      String
+  cropId        String
+  date          DateTime
+  startTime     String
+  endTime       String
+  maxFarmers    Int
+  bookedFarmers Int            @default(0)
+  status        ScheduleStatus @default(UPCOMING)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  center ProcurementCenter @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  crop   Crop              @relation(fields: [cropId], references: [id])
+  tokens Token[]
+
+  @@index([centerId, date])
+  @@map("procurement_schedules")
+}
+
+// ---------------------------------------------------------------------------
+// Tokens & queue
+// ---------------------------------------------------------------------------
+
+model Token {
+  id            String      @id @default(cuid())
+  tokenNumber   String
+  farmerId      String
+  centerId      String
+  scheduleId    String
+  cropId        String
+  quantity      Float
+  date          DateTime
+  slotStart     String
+  slotEnd       String
+  queuePosition Int
+  estimatedWait Int
+  status        TokenStatus @default(BOOKED)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  farmer     Farmer              @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  center     ProcurementCenter   @relation(fields: [centerId], references: [id])
+  schedule   ProcurementSchedule @relation(fields: [scheduleId], references: [id])
+  crop       Crop                @relation(fields: [cropId], references: [id])
+  queueEntry QueueEntry?
+  procurement Procurement?
+
+  @@unique([centerId, tokenNumber])
+  @@index([centerId, status])
+  @@index([farmerId])
+  @@map("tokens")
+}
+
+model Queue {
+  id                 String       @id @default(cuid())
+  centerId           String       @unique
+  running            Boolean      @default(true)
+  status             CenterStatus @default(ACTIVE)
+  nowServingTokenId  String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  center  ProcurementCenter @relation(fields: [centerId], references: [id], onDelete: Cascade)
+  entries QueueEntry[]
+
+  @@map("queues")
+}
+
+model QueueEntry {
+  id          String           @id @default(cuid())
+  queueId     String
+  tokenId     String           @unique
+  position    Int
+  status      QueueEntryStatus @default(WAITING)
+  joinedAt    DateTime         @default(now())
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  queue Queue @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  token Token @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+
+  @@index([queueId, status])
+  @@index([queueId, position])
+  @@map("queue_entries")
+}
+
+// ---------------------------------------------------------------------------
+// Procurement & payment
+// ---------------------------------------------------------------------------
+
+model Procurement {
+  id               String            @id @default(cuid())
+  tokenId          String            @unique
+  farmerId         String
+  centerId         String
+  cropId           String
+  declaredQuantity Float
+  actualQuantity   Float?
+  qualityGrade     String?
+  msp              Float
+  totalAmount      Float?
+  status           ProcurementStatus @default(PENDING)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  token     Token             @relation(fields: [tokenId], references: [id], onDelete: Cascade)
+  farmer    Farmer            @relation(fields: [farmerId], references: [id])
+  center    ProcurementCenter @relation(fields: [centerId], references: [id])
+  crop      Crop              @relation(fields: [cropId], references: [id])
+  payment   Payment?
+  transport Transport?
+
+  @@index([centerId])
+  @@index([farmerId])
+  @@map("procurements")
+}
+
+// ---------------------------------------------------------------------------
+// Transport (Phase 4) — becomes available only after a procurement completes
+// ---------------------------------------------------------------------------
+
+model Transport {
+  id             String          @id @default(cuid())
+  farmerId       String
+  procurementId  String          @unique
+  centerId       String
+  vehicleType    VehicleType
+  pickupLocation String
+  destination    String
+  distanceKm     Float
+  estimatedCost  Float
+  platformFee    Float
+  totalCost      Float
+  status         TransportStatus @default(REQUESTED)
+  driverName     String?
+  driverPhone    String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  farmer      Farmer            @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+  procurement Procurement       @relation(fields: [procurementId], references: [id], onDelete: Cascade)
+  center      ProcurementCenter @relation(fields: [centerId], references: [id])
+  payment     Payment?
+
+  @@index([farmerId])
+  @@index([status])
+  @@map("transports")
+}
+
+// ---------------------------------------------------------------------------
+// Payment — covers procurement settlement AND Stripe transport payments
+// ---------------------------------------------------------------------------
+
+model Payment {
+  id                     String        @id @default(cuid())
+  kind                   PaymentKind   @default(PROCUREMENT)
+  farmerId               String
+  procurementId          String?       @unique
+  transportId            String?       @unique
+  // amount = total charged. For transport: transportAmount + platformFee.
+  amount                 Float
+  transportAmount        Float?
+  platformFee            Float?
+  currency               String        @default("inr")
+  status                 PaymentStatus @default(PROCESSING)
+  stripePaymentIntentId  String?
+  stripeCheckoutSessionId String?      @unique
+  expectedDate           DateTime?
+  paidAt                 DateTime?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  procurement Procurement? @relation(fields: [procurementId], references: [id], onDelete: Cascade)
+  transport   Transport?   @relation(fields: [transportId], references: [id], onDelete: Cascade)
+  farmer      Farmer       @relation(fields: [farmerId], references: [id])
+
+  @@index([kind, status])
+  @@map("payments")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications & AI
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id        String           @id @default(cuid())
+  farmerId  String?
+  title     String
+  message   String
+  type      NotificationType
+  meta      Json?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  farmer Farmer? @relation(fields: [farmerId], references: [id], onDelete: Cascade)
+
+  @@index([farmerId, createdAt])
+  @@map("notifications")
+}
+
+model AiPrediction {
+  id            String         @id @default(cuid())
+  kind          PredictionKind
+  centerId      String?
+  scheduleId    String?
+  predictedWait Int
+  confidence    Int
+  factors       String[]
+  payload       Json?
+  createdAt     DateTime       @default(now())
+
+  @@index([kind, createdAt])
+  @@map("ai_predictions")
+}
+
+model CenterRecommendation {
+  id                String               @id @default(cuid())
+  fromCenterId      String
+  toCenterId        String
+  overflowPercent   Int
+  redirectFarmers   Int
+  waitBeforeMinutes Int
+  waitAfterMinutes  Int
+  reductionPercent  Int
+  reasons           String[]
+  status            RecommendationStatus @default(PENDING)
+  appliedAt         DateTime?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  fromCenter ProcurementCenter @relation("recFromCenter", fields: [fromCenterId], references: [id], onDelete: Cascade)
+  toCenter   ProcurementCenter @relation("recToCenter", fields: [toCenterId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("center_recommendations")
+}

@@ -1,0 +1,60 @@
+{
+  "name": "kisansetu-ai-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "KisanSetu AI backend — REST API for the Farmer, Centre and Admin dashboards.",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:deploy": "prisma migrate deploy",
+    "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:studio": "prisma studio",
+    "db:reset": "prisma migrate reset --force",
+    "typecheck": "tsc --noEmit",
+    "test:api": "tsx prisma/seed.ts && tsx tests/api.test.ts",
+    "test:api:noseed": "tsx tests/api.test.ts",
+    "test:phase4": "tsx prisma/seed.ts && tsx tests/phase4.test.ts",
+    "test:supabase": "tsx tests/supabase.test.ts",
+    "test:google": "tsx tests/google.test.ts",
+    "test:stripe": "tsx tests/stripe.test.ts",
+    "test:phase5": "tsx prisma/seed.ts && tsx tests/phase5.test.ts",
+    "test:ai": "tsx prisma/seed.ts && tsx tests/aiChat.test.ts",
+    "test:agent-tools": "tsx prisma/seed.ts && tsx tests/agentTools.test.ts",
+    "test:auth-config": "tsx tests/authConfigStatus.test.ts",
+    "test:all": "tsx prisma/seed.ts && tsx tests/api.test.ts && tsx prisma/seed.ts && tsx tests/phase4.test.ts && tsx tests/supabase.test.ts && tsx tests/google.test.ts && tsx prisma/seed.ts && tsx tests/stripe.test.ts && tsx prisma/seed.ts && tsx tests/phase5.test.ts && tsx prisma/seed.ts && tsx tests/aiChat.test.ts && tsx prisma/seed.ts && tsx tests/agentTools.test.ts && tsx tests/authConfigStatus.test.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^2.21.0",
+    "@prisma/client": "^5.22.0",
+    "@supabase/supabase-js": "^2.116.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "stripe": "^17.7.0",
+    "swagger-ui-express": "^5.0.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/morgan": "^1.9.9",
+    "@types/node": "^22.9.0",
+    "@types/swagger-ui-express": "^4.1.7",
+    "prisma": "^5.22.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}

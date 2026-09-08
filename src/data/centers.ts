@@ -1,0 +1,98 @@
+import type { ProcurementCenter } from '../types';
+
+/**
+ * Mock procurement centers around Jaipur, Rajasthan.
+ * Swap this module for GET /api/centers when the backend is ready.
+ */
+export const centers: ProcurementCenter[] = [
+  {
+    id: 'jaipur-grain',
+    name: 'Jaipur Grain Center',
+    district: 'Jaipur',
+    status: 'ACTIVE',
+    load: 'normal',
+    capacity: 120,
+    served: 82,
+    queueLength: 18,
+    predictedWaitMinutes: 35,
+    avgProcessingMinutes: 7,
+    crops: ['Wheat', 'Mustard', 'Maize'],
+    lat: 26.9124,
+    lng: 75.7873,
+    mapX: 46,
+    mapY: 52,
+  },
+  {
+    id: 'amer',
+    name: 'Amer Procurement Center',
+    district: 'Jaipur',
+    status: 'ACTIVE',
+    load: 'high',
+    capacity: 120,
+    served: 117,
+    queueLength: 67,
+    predictedWaitMinutes: 142,
+    avgProcessingMinutes: 9,
+    crops: ['Wheat', 'Rice'],
+    lat: 26.9855,
+    lng: 75.8513,
+    mapX: 62,
+    mapY: 28,
+  },
+  {
+    id: 'sanganer',
+    name: 'Sanganer Procurement Center',
+    district: 'Jaipur',
+    status: 'ACTIVE',
+    load: 'low',
+    capacity: 100,
+    served: 31,
+    queueLength: 12,
+    predictedWaitMinutes: 20,
+    avgProcessingMinutes: 6,
+    crops: ['Wheat', 'Soybean', 'Mustard'],
+    lat: 26.8189,
+    lng: 75.7924,
+    mapX: 44,
+    mapY: 74,
+  },
+  {
+    id: 'chomu',
+    name: 'Chomu Procurement Center',
+    district: 'Jaipur',
+    status: 'ACTIVE',
+    load: 'normal',
+    capacity: 110,
+    served: 68,
+    queueLength: 24,
+    predictedWaitMinutes: 48,
+    avgProcessingMinutes: 8,
+    crops: ['Wheat', 'Mustard', 'Cotton'],
+    lat: 27.1667,
+    lng: 75.7223,
+    mapX: 30,
+    mapY: 14,
+  },
+  {
+    id: 'bagru',
+    name: 'Bagru Procurement Center',
+    district: 'Jaipur',
+    status: 'ACTIVE',
+    load: 'normal',
+    capacity: 90,
+    served: 54,
+    queueLength: 19,
+    predictedWaitMinutes: 40,
+    avgProcessingMinutes: 7,
+    crops: ['Wheat', 'Maize', 'Cotton'],
+    lat: 26.8117,
+    lng: 75.5455,
+    mapX: 18,
+    mapY: 64,
+  },
+];
+
+export const getCenterById = (id: string): ProcurementCenter | undefined =>
+  centers.find((c) => c.id === id);
+
+export const DEFAULT_CENTER_ID = 'jaipur-grain';
