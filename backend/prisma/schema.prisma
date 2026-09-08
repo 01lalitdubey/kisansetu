@@ -240,6 +240,18 @@ model ProcurementCenter {
   pincode         String?
   supportedCrops  String[]             @default([])
   registeredById  String?
+  // Beta data-provenance (Part 5/40): who vouches for this record, and when
+  // it was last checked. "DEMO" = prototype/seed data (never presented as an
+  // official record); "RAJASTHAN_OFFICIAL" = matched to a verified government
+  // source; "OFFICER_REPORTED" = entered by the centre's own officer at
+  // registration, not yet cross-checked against an official source.
+  code                String? // official/internal centre code, when known
+  operatingHours      String?
+  contactEmail        String?
+  dataSource          String    @default("DEMO")
+  governmentReference String? // order/document reference, when dataSource = RAJASTHAN_OFFICIAL
+  season              String? // e.g. "2026-27", for season-specific official records
+  lastVerifiedAt      DateTime?
   createdAt             DateTime     @default(now())
   updatedAt             DateTime     @updatedAt
 
@@ -497,4 +509,34 @@ model CenterRecommendation {
 
   @@index([status, createdAt])
   @@map("center_recommendations")
+}
+
+// ---------------------------------------------------------------------------
+// Knowledge base (RAG) — verified static knowledge, distinct from live
+// application data. The agent retrieves relevant passages from here for
+// procedural/policy questions (documents, MSP, how procurement works) and
+// uses live-database tools for anything that changes minute to minute
+// (queue, tokens, payments). See backend/src/services/knowledge/.
+// ---------------------------------------------------------------------------
+
+model KnowledgeDocument {
+  id             String    @id @default(cuid())
+  title          String
+  content        String
+  source         String // e.g. "Rajasthan Food Department"
+  sourceUrl      String?
+  documentType   String // e.g. "GOVERNMENT_ORDER", "PROCEDURE", "FAQ", "MSP_NOTIFICATION"
+  authority      String // e.g. "Government of Rajasthan"
+  documentDate   DateTime?
+  season         String? // e.g. "2026-27"
+  crop           String?
+  language       String    @default("en")
+  lastVerifiedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([crop])
+  @@index([season])
+  @@index([documentType])
+  @@map("knowledge_documents")
 }

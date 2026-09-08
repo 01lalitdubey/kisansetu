@@ -12,7 +12,7 @@ import {
   predictWaitingTime,
   recommendSlot,
 } from '../services/recommendationService';
-import { buildChatContext, SYSTEM_PROMPT, languageInstruction } from '../services/chatContextService';
+import { buildChatContext, detectIntent, SYSTEM_PROMPT, languageInstruction } from '../services/chatContextService';
 import { buildFallbackReply } from '../services/chatFallbackService';
 import { generateAgentReply, geminiConfigured } from '../services/geminiService';
 
@@ -124,6 +124,17 @@ const chatSchema = z.object({
   language: languageSchema.optional(),
 });
 
+/**
+ * Intents simple/unambiguous enough to answer straight from the database —
+ * calling Gemini for "what is my token" wastes a request (cost, latency,
+ * rate-limit budget) for zero benefit, per Part 32. Reserved for SHORT
+ * messages only: a longer message might be combining this with something
+ * that genuinely needs the model (a comparison, an explanation, a follow-up
+ * reference) and should still go through the full agent.
+ */
+const DIRECT_LOOKUP_INTENTS = new Set(['token', 'queue', 'procurement', 'transport', 'payment']);
+const DIRECT_LOOKUP_MAX_WORDS = 8;
+
 export const postChat = asyncHandler(async (req: Request, res: Response) => {
   const farmerId = req.user!.profileId;
   if (!farmerId) throw ApiError.forbidden('No farmer profile is linked to this account');
@@ -131,21 +142,29 @@ export const postChat = asyncHandler(async (req: Request, res: Response) => {
   const body = validate(chatSchema, req.body);
   const language = body.language ?? 'en';
 
-  const respond = (message: string, source: 'gemini' | 'fallback') => ok(res, { message, language, source });
+  const respond = (message: string, source: 'gemini' | 'fallback' | 'deterministic') =>
+    ok(res, { message, language, source });
 
-  // Deterministic, still real-data-grounded reply used whenever the Gemini
-  // agent is unavailable or fails — computed lazily so the happy path (agent
-  // succeeds) never pays for this extra DB round-trip.
-  const fallback = async () => {
+  // Deterministic, still real-data-grounded reply — used both as the
+  // designed fast-path for simple direct lookups (Part 32) and as the
+  // failure fallback whenever the Gemini agent is unavailable or errors.
+  // Computed lazily so the Gemini happy path never pays for the extra DB
+  // round-trip.
+  const deterministicReply = async () => {
     const context = await buildChatContext(farmerId, body.message);
     const farmerName = (context.data.farmer as { name?: string } | undefined)?.name;
-    return respond(buildFallbackReply(context, language, farmerName), 'fallback');
+    return buildFallbackReply(context, language, farmerName);
   };
+
+  const wordCount = body.message.trim().split(/\s+/).length;
+  if (DIRECT_LOOKUP_INTENTS.has(detectIntent(body.message)) && wordCount <= DIRECT_LOOKUP_MAX_WORDS) {
+    return respond(await deterministicReply(), 'deterministic');
+  }
 
   if (!geminiConfigured) {
     // eslint-disable-next-line no-console
     console.warn('[gemini] GEMINI_API_KEY not configured — using fallback assistant');
-    return fallback();
+    return respond(await deterministicReply(), 'fallback');
   }
 
   try {
@@ -162,9 +181,9 @@ export const postChat = asyncHandler(async (req: Request, res: Response) => {
       ctx: { farmerId },
     });
     return respond(reply, 'gemini');
-  } catch (err) {
+  } catch {
     // Never leak the API key or raw provider errors to the client — the
     // detailed reason is already logged server-side by geminiService.
-    return fallback();
+    return respond(await deterministicReply(), 'fallback');
   }
 });

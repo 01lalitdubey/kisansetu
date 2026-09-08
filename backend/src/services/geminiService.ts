@@ -73,6 +73,52 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   ]);
 }
 
+const MAX_429_RETRIES = 1;
+const MAX_BACKOFF_MS = 3000;
+
+function is429(err: unknown): boolean {
+  const status = (err as { status?: number })?.status;
+  const message = err instanceof Error ? err.message : String(err);
+  return status === 429 || /RESOURCE_EXHAUSTED/i.test(message);
+}
+
+/** Google's 429 body often includes "Please retry in 9.4s" — honour it, capped, so we never wait too long inside one HTTP request. */
+function suggestedBackoffMs(err: unknown): number {
+  const message = err instanceof Error ? err.message : String(err);
+  const match = message.match(/retry(?:Delay|_delay)?["\s:]*"?(\d+(?:\.\d+)?)s?/i) ?? message.match(/retry in (\d+(?:\.\d+)?)s/i);
+  const seconds = match ? Number(match[1]) : 1.5;
+  return Math.min(MAX_BACKOFF_MS, Math.max(300, seconds * 1000));
+}
+
+/**
+ * A single generateContent call, with ONE bounded retry on 429/quota errors
+ * only (never spam Gemini — every other error type is thrown immediately).
+ */
+async function callGeminiOnce(
+  ai: GoogleGenAI,
+  params: Parameters<GoogleGenAI['models']['generateContent']>[0],
+  timeoutMs: number,
+  stage: string,
+) {
+  for (let attempt = 0; attempt <= MAX_429_RETRIES; attempt++) {
+    try {
+      return await withTimeout(ai.models.generateContent(params), timeoutMs);
+    } catch (err) {
+      const isLastAttempt = attempt === MAX_429_RETRIES;
+      if (!is429(err) || isLastAttempt) {
+        logGeminiFailure(err, { model: String(params.model), stage });
+        throw err;
+      }
+      const delay = suggestedBackoffMs(err);
+      // eslint-disable-next-line no-console
+      console.warn(`[gemini] 429 rate-limited (${stage}) — retrying once in ${delay}ms`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  // Unreachable — the loop always returns or throws — but keeps TS happy.
+  throw new Error('unreachable');
+}
+
 const MAX_TOOL_ROUNDS = 4;
 
 /**
@@ -102,13 +148,7 @@ export async function generateAgentReply(input: GenerateAgentReplyInput): Promis
   };
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    let response;
-    try {
-      response = await withTimeout(ai.models.generateContent({ model, contents, config }), timeoutMs);
-    } catch (err) {
-      logGeminiFailure(err, { model, stage: `generateContent (round ${round})` });
-      throw err;
-    }
+    const response = await callGeminiOnce(ai, { model, contents, config }, timeoutMs, `generateContent (round ${round})`);
 
     const calls = response.functionCalls;
     if (!calls || calls.length === 0) {

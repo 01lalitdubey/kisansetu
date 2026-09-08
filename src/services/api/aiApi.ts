@@ -9,7 +9,13 @@ export interface ChatTurn {
 export interface ChatReply {
   message: string;
   language: Language;
-  source: 'gemini' | 'fallback';
+  /**
+   * 'gemini' = the AI agent answered. 'deterministic' = answered directly
+   * from KisanSetu data without calling Gemini (a simple lookup like "what
+   * is my token" — by design, not a failure). 'fallback' = Gemini was
+   * unavailable/erroring and a deterministic reply was used in its place.
+   */
+  source: 'gemini' | 'fallback' | 'deterministic';
 }
 
 /**

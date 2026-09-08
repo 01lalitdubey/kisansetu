@@ -12,6 +12,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "tsx prisma/seed.ts",
+    "seed:knowledge": "tsx prisma/seedKnowledge.ts",
+    "ingest:rajasthan-procurement": "tsx prisma/ingestRajasthanProcurement.ts",
     "prisma:studio": "prisma studio",
     "db:reset": "prisma migrate reset --force",
     "typecheck": "tsc --noEmit",

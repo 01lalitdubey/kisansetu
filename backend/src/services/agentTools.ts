@@ -9,6 +9,7 @@ import { getVehicleOptions, haversineKm, quoteTransport, listFarmerTransports } 
 import { listFarmerPayments } from './paymentService';
 import { listProcurements } from './procurementService';
 import { listNotifications } from './notificationService';
+import { getProcurementRules, searchKnowledgeBase } from './knowledge/knowledgeService';
 
 /**
  * ---------------------------------------------------------------------------
@@ -50,6 +51,9 @@ function presentCentreForAgent(c: Awaited<ReturnType<typeof listCenters>>[number
     supportedCrops: c.supportedCrops,
     capacity: c.capacity,
     currentLoad: c.load,
+    // Tell the agent (and, through it, the farmer) how trustworthy this
+    // record is: "DEMO" = prototype data, never present as official.
+    dataSource: c.dataSource,
   };
 }
 
@@ -170,6 +174,34 @@ export const TOOL_DECLARATIONS: FunctionDeclaration[] = [
     name: 'getRecentNotifications',
     description: 'Get the authenticated farmer\'s recent KisanSetu notifications (e.g. "Koi notification aaya?").',
     parameters: { type: Type.OBJECT, properties: {} },
+  },
+  {
+    name: 'searchKnowledgeBase',
+    description:
+      'Search VERIFIED static knowledge — government procedures, MSP notifications, required documents, how procurement works. ' +
+      'Use this for questions about rules/process/policy (e.g. "What documents do I need?", "What is MSP?", "How does procurement work?"), ' +
+      'NOT for live data like a specific centre\'s current queue or a farmer\'s own token — use the live-data tools for that.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        query: { type: Type.STRING, description: 'The farmer\'s question, in their own words.' },
+        crop: { type: Type.STRING },
+        season: { type: Type.STRING, description: 'e.g. "2026-27", if the farmer mentions a specific season.' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'getProcurementRules',
+    description: 'Get verified procurement rules/eligibility/process information for a crop or season (e.g. "Can I sell wheat at this centre?", "How does registration work?").',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        topic: { type: Type.STRING, description: 'e.g. "eligibility", "registration", "documents", "quality", "payment".' },
+        crop: { type: Type.STRING },
+        season: { type: Type.STRING },
+      },
+    },
   },
 ];
 
@@ -430,5 +462,29 @@ export const TOOL_IMPLEMENTATIONS: Record<string, ToolImpl> = {
       count: notifications.length,
       notifications: notifications.map((n) => ({ title: n.title, message: n.message, type: n.type, read: n.read, createdAt: n.createdAt })),
     };
+  },
+
+  async searchKnowledgeBase(args) {
+    const results = await searchKnowledgeBase({
+      query: str(args.query) ?? '',
+      crop: str(args.crop),
+      season: str(args.season),
+    });
+    if (results.length === 0) {
+      return { found: false, message: 'No verified knowledge document matched this question.' };
+    }
+    return { found: true, documents: results };
+  },
+
+  async getProcurementRules(args) {
+    const results = await getProcurementRules({
+      topic: str(args.topic),
+      crop: str(args.crop),
+      season: str(args.season),
+    });
+    if (results.length === 0) {
+      return { found: false, message: 'No verified procurement-rules document matched this topic.' };
+    }
+    return { found: true, documents: results };
   },
 };

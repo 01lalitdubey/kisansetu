@@ -31,6 +31,16 @@ function present(center: ProcurementCenter) {
     pincode: center.pincode,
     supportedCrops: center.supportedCrops,
     registeredById: center.registeredById,
+    // Data provenance (Part 5/40) — lets the frontend/agent distinguish
+    // prototype data from a verified official record instead of presenting
+    // everything with equal confidence.
+    code: center.code,
+    operatingHours: center.operatingHours,
+    contactEmail: center.contactEmail,
+    dataSource: center.dataSource,
+    governmentReference: center.governmentReference,
+    season: center.season,
+    lastVerifiedAt: center.lastVerifiedAt,
     utilization: load.utilization,
     load: load.load,
     predictedWait: load.predictedWait,
@@ -177,6 +187,10 @@ export async function registerCenter(userId: string, input: RegisterCenterInput)
         approvalStatus: 'PENDING_APPROVAL',
         status: 'PAUSED',
         isSeed: false,
+        // Entered by the centre's own officer at registration — real, but not
+        // yet cross-checked against an official government source. Admin
+        // approval (Part 19) is a separate step from this data-source label.
+        dataSource: 'OFFICER_REPORTED',
         registeredById: userId,
         // map position derived from lng/lat so it renders on the mock canvas too
         mapX: Math.min(95, Math.max(5, (input.longitude - 75) * 60 + 30)),
